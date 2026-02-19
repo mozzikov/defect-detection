@@ -1,6 +1,9 @@
 """
 train.py — Скрипт обучения модели.
 """
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+logger = logging.getLogger(__name__)
 import torch
 import torch.nn as nn
 import torch.optim as optim
