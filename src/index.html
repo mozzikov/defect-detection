@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детекция дефектов строительных конструкций</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { color: #1a1a2e; margin-bottom: 8px; font-size: 1.5em; }
+        .subtitle { color: #666; margin-bottom: 20px; font-size: 0.95em; }
+        .tech-badge {
+            display: inline-block; background: #f0f0f5; color: #555;
+            padding: 4px 12px; border-radius: 20px; font-size: 0.8em; margin: 2px;
+        }
+        .badges { margin-bottom: 25px; }
+        .upload-area {
+            border: 2px dashed #ccc; border-radius: 12px; padding: 40px 20px;
+            margin: 20px 0; cursor: pointer; transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f8f8ff; }
+        .upload-icon { font-size: 2.5em; margin-bottom: 10px; }
+        input[type="file"] { display: none; }
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; padding: 14px 36px;
+            border-radius: 8px; font-size: 16px; cursor: pointer;
+            margin-top: 15px; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+        #preview {
+            max-width: 100%; max-height: 300px; margin: 15px 0;
+            border-radius: 10px; display: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .result {
+            margin-top: 25px; padding: 20px;
+            border-radius: 10px; display: none; text-align: left;
+        }
+        .result.positive { background: #fff0f0; border: 1px solid #ff6b6b; }
+        .result.negative { background: #f0fff0; border: 1px solid #51cf66; }
+        .result-header { font-size: 1.2em; font-weight: bold; margin-bottom: 8px; }
+        .result.positive .result-header { color: #e03131; }
+        .result.negative .result-header { color: #2f9e44; }
+        .result-detail { color: #555; margin-top: 5px; }
+        .spinner { display: none; margin: 20px auto; color: #667eea; font-size: 1.1em; }
+        .spinner::after {
+            content: ''; display: inline-block; width: 20px; height: 20px;
+            border: 3px solid #667eea; border-top-color: transparent;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            margin-left: 10px; vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Детекция дефектов строительных конструкций</h1>
+        <p class="subtitle">Анализ изображений бетонных поверхностей с помощью CNN</p>
+        <div class="badges">
+            <span class="tech-badge">PyTorch</span>
+            <span class="tech-badge">ResNet18</span>
+            <span class="tech-badge">Transfer Learning</span>
+            <span class="tech-badge">Flask</span>
+        </div>
+        <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📷</div>
+            <p>Перетащите изображение сюда<br>или нажмите для выбора файла</p>
+            <p style="color: #999; font-size: 0.85em; margin-top: 10px;">JPG, PNG</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*">
+        <img id="preview" alt="Предпросмотр">
+        <div class="spinner" id="spinner">Анализ изображения</div>
+        <button class="btn" id="analyzeBtn" onclick="analyze()" disabled>Анализировать</button>
+        <div class="result" id="result">
+            <div class="result-header" id="resultClass"></div>
+            <div id="resultConf"></div>
+            <div class="result-detail" id="resultDetails"></div>
+        </div>
+    </div>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const dropZone = document.getElementById('dropZone');
+
+        fileInput.addEventListener('change', handleFile);
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#667eea'; });
+        dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = '#ccc');
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault(); dropZone.style.borderColor = '#ccc';
+            fileInput.files = e.dataTransfer.files; handleFile();
+        });
+
+        function handleFile() {
+            const file = fileInput.files[0];
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+                analyzeBtn.disabled = false;
+                document.getElementById('result').style.display = 'none';
+            }
+        }
+
+        async function analyze() {
+            const file = fileInput.files[0];
+            if (!file) return;
+            analyzeBtn.disabled = true;
+            document.getElementById('spinner').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const response = await fetch('/predict', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.error) { alert('Ошибка: ' + data.error); return; }
+
+                const isDefect = data.class.includes('обнаружен');
+                document.getElementById('resultClass').textContent =
+                    (isDefect ? '⚠ ' : '✓ ') + data.class;
+                document.getElementById('resultConf').textContent =
+                    'Уверенность: ' + data.confidence;
+                document.getElementById('resultDetails').textContent =
+                    'Без дефекта: ' + data.details.negative_prob +
+                    ' | Дефект: ' + data.details.positive_prob;
+
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'result ' + (isDefect ? 'positive' : 'negative');
+                resultDiv.style.display = 'block';
+            } catch (err) { alert('Ошибка: ' + err.message); }
+
+            analyzeBtn.disabled = false;
+            document.getElementById('spinner').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
