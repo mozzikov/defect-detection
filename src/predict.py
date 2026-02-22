@@ -1,6 +1,5 @@
 """
 predict.py — Предсказание для одного изображения.
-Использование: python src/predict.py путь/к/фото.jpg
 """
 import torch
 import torch.nn as nn

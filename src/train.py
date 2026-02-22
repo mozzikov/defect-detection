@@ -25,8 +25,9 @@ def main():
 
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
+        transforms.RandomHorizontalFlip(),      # отражение по горизонтали
+        transforms.RandomRotation(10),           # поворот ±10 градусов
+        transforms.ColorJitter(brightness=0.2),  # изменение яркости
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
