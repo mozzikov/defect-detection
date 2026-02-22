@@ -32,3 +32,5 @@ docker run -p 5000:5000 defect-detection
 
 ## Автор
 Ермолин М.Д., группа ИТм-11-25
+## Датасет
+Surface Crack Detection (Kaggle) — ~20 000 изображений бетонных поверхностей, 227×227 px, два класса: Positive (трещина) и Negative (норма).
